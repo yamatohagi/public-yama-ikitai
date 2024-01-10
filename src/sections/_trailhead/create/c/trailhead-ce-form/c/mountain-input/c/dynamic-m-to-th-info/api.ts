@@ -1,0 +1,1 @@
+export {GetMtList} from '../../api';

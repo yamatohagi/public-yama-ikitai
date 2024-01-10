@@ -1,0 +1,12 @@
+generated/
+node_modules/
+.next/
+.github/
+.vscode/
+prisma/
+public/
+styled-system/
+*.js
+*.cjs
+build/
+out/

@@ -1,0 +1,6 @@
+.splide__pagination__page.is-active {
+  background: #367b9d !important;
+  width: 7px !important;
+  height: 7px !important;
+  top: -0.5px !important;
+}

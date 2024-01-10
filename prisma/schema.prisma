@@ -1,0 +1,958 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("POSTGRES_PRISMA_URL")
+}
+
+//あとでindex絶対はって------------------------------------------全部ね
+
+model Area {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  name           String
+  nameKana       String
+  remark         String?
+  Mountain       Mountain[]
+  Trailhead      Trailhead[]
+  MtFacility     MtFacility[]
+  AfterClimbMeal AfterClimbMeal[]
+  AfterClimbSpa  AfterClimbSpa[]
+}
+
+model AfterClimbMeal {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  areaId      Int?
+  mtId        Int?
+  trailheadId Int?
+  name        String
+  nameKana    String?
+  mtArea      String?
+  postalCode  Int?
+  prefecture  String?
+  address1    String?
+  address2    String?
+  address3    String?
+
+  lat Float? //データ入れるときにgoogle検索してname入れるから必ず検索できるはずだが(余裕のあるタイミングでroute検索ロジックを緯度軽度に変更する)
+  lng Float?
+
+  remark String?
+  url    String?
+
+  Area      Area?      @relation(fields: [areaId], references: [id])
+  Mountain  Mountain?  @relation(fields: [mtId], references: [id], onDelete: Cascade)
+  Trailhead Trailhead? @relation(fields: [trailheadId], references: [id])
+}
+
+model AfterClimbSpa {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  areaId      Int?
+  mtId        Int?
+  trailheadId Int?
+  name        String
+  nameKana    String?
+  mtArea      String?
+  postalCode  Int?
+  prefecture  String?
+  address1    String?
+  address2    String?
+  address3    String?
+
+  lat Float? //データ入れるときにgoogle検索してname入れるから必ず検索できるはずだが(余裕のあるタイミングでroute検索ロジックを緯度軽度に変更する)
+  lng Float?
+
+  remark String?
+  url    String?
+
+  Area      Area?      @relation(fields: [areaId], references: [id])
+  Mountain  Mountain?  @relation(fields: [mtId], references: [id], onDelete: Cascade)
+  Trailhead Trailhead? @relation(fields: [trailheadId], references: [id])
+}
+
+model Notice {
+  id        Int       @id @default(autoincrement())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  type       String
+  fromUserId String
+  toUserId   String
+  userImage  String
+  postId     Int?
+
+  Post Post? @relation(fields: [postId], references: [id])
+
+  FromUser User @relation("FromUser", fields: [fromUserId], references: [id])
+  ToUser   User @relation("ToUser", fields: [toUserId], references: [id])
+}
+
+model Mountain {
+  id            Int       @id @default(autoincrement())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+  applicationAt DateTime? //申請日
+  approvalAt    DateTime? //承認日
+  remandAt      DateTime? //差し戻し日
+  originId      Int? //元データのid
+
+  areaId Int?
+
+  name     String
+  nameKana String
+
+  postalCode Int?
+  prefecture String?
+  address1   String?
+  address2   String?
+  address3   String?
+
+  lat Float? //データ入れるときにgoogle検索してname入れるから必ず検索できるはずだが(余裕のあるタイミングでroute検索ロジックを緯度軽度に変更する)
+  lng Float?
+
+  hyakumeizanStatus   Boolean?
+  nihyakumeizanStatus Boolean?
+  stay0n1d            Boolean?
+  stay1n2d            Boolean?
+  stay2n3d            Boolean?
+  stay3n4d            Boolean?
+  stay4n5d            Boolean?
+  stay5n6d            Boolean?
+  stay6n7d            Boolean?
+
+  elevation   Int? //標高
+  appealPoint String?
+  description String?
+
+  MountainToTrailhead  MountainToTrailhead[]
+  MountainToMtFacility MountainToMtFacility[]
+  MountainUrlMemo      MountainUrlMemo[]
+  MountainToPhoto      MountainToPhoto[]
+  MountainFeature      MountainFeature?
+  Post                 Post[]
+  Area                 Area?                  @relation(fields: [areaId], references: [id])
+  AfterClimbMeal       AfterClimbMeal[]
+  AfterClimbSpa        AfterClimbSpa[]
+  PhotoLabel           PhotoLabel[]
+}
+
+//例:keyName:バスの時刻表,value:https//www.abc.com
+model MountainUrlMemo {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  mountainId Int
+  name       String
+  url        String
+  remark     String?
+
+  Mountain Mountain @relation(fields: [mountainId], references: [id], onDelete: Cascade)
+}
+
+model MountainFeature {
+  id         Int       @id @default(autoincrement())
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+  mountainId Int       @unique
+
+  seaOfCloudsRating Float? // 雲海の評価（オプション）
+  seaOfCloudsRemark String? // 雲海のremark（オプション）
+
+  starrySkyRating Float? // 天の川の評価（オプション）
+  starrySkyRemark String? // 天の川のremark（オプション）
+
+  ptarmiganRating Float? // 天の川の評価（オプション）
+  ptarmiganRemark String? // 天の川のremark（オプション）
+
+  sunriseRating Float? // ご来光の評価（オプション）
+  sunriseRemark String? // ご来光のremark（オプション）
+
+  sunsetRating Float? // 夕日の評価（オプション）
+  sunsetRemark String? // 夕日のremark（オプション）
+
+  widthPeakRating Float? // 山頂の広さの評価（オプション）
+  widthPeakRemark String? // 山頂の広さのremark（オプション）
+
+  trailViewRating Float? // 雲海の評価（オプション）
+  trailViewRemark String? // 雲海のremark（オプション）
+
+  remark   String?
+  Mountain Mountain @relation(fields: [mountainId], references: [id], onDelete: Cascade)
+}
+
+//投票の時このテーブルに入れて、平均を出してMountainFeatureに入れる
+model MountainFeatureRatingHistory {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  mountainFeatureId Int
+  featureName       String
+  rating            Float
+  userId            String
+}
+
+//山の写真中間テーブル
+model MtFacilityToPhoto {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  indoor  Boolean @default(false) // 屋内かどうか
+  outdoor Boolean @default(false) // 屋外かどうか
+
+  mtFacilityId Int
+  photoId      Int
+
+  MtFacility MtFacility @relation(fields: [mtFacilityId], references: [id])
+  Photo      Photo      @relation(fields: [photoId], references: [id])
+}
+
+//山の写真中間テーブル
+model MountainToPhoto {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  labelTop   Int? //画像の上にラベルをつける
+  labelLeft  Int?
+  mountainId Int
+  photoId    Int
+  viewTo     Boolean  @default(false) // この写真が,この山から見える、ってのを実現するためにだけに
+  Mountain   Mountain @relation(fields: [mountainId], references: [id], onDelete: Cascade)
+  Photo      Photo    @relation(fields: [photoId], references: [id])
+}
+
+//登山口と写真中間テーブル
+model TrailheadToPhoto {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  trailheadId Int
+  photoId     Int
+
+  Trailhead Trailhead @relation(fields: [trailheadId], references: [id])
+  Photo     Photo     @relation(fields: [photoId], references: [id])
+}
+
+enum MediaType {
+  PHOTO
+  VIDEO
+}
+
+//山の写真
+model Photo {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  type              MediaType           @default(PHOTO)
+  title             String
+  order             Int                 @default(0)
+  original          String
+  thumbnail         String
+  width             Int
+  height            Int
+  uploadStatus      String              @default("uploaded")
+  MountainToPhoto   MountainToPhoto[]
+  Post              Post?               @relation(fields: [postId], references: [id])
+  postId            Int?
+  MtFacilityToPhoto MtFacilityToPhoto[]
+  TrailheadToPhoto  TrailheadToPhoto[]
+  PhotoLabel        PhotoLabel[]
+}
+
+model PhotoLabel {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  photoId   Int
+  labelTop  Int
+  labelLeft Int
+  mtId      Int?
+
+  Mountain Mountain? @relation(fields: [mtId], references: [id], onDelete: Cascade)
+  Photo    Photo     @relation(fields: [photoId], references: [id])
+}
+
+enum uploadStatus {
+  uploading
+  uploaded
+}
+
+model MountainToTrailhead {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  mountainId       Int
+  trailheadId      Int
+  //リレーション設定しても良かったけど覚えてると思うから、postの時に面倒だったら変えるかも
+  uphillTime       Int? // 登山時間（上り）（オプション）
+  uphillDistance   Int? // 登山距離（上り）（オプション）
+  downhillTime     Int? // 登山時間（下り）（オプション）
+  downhillDistance Int? // 登山距離（下り）（オプション）
+  upDownTime       Int? // 登山時間（往復）（オプション）
+  upDownDistance   Int? // 登山距離（往復）（オプション）
+
+  remark String? // 備考（文字列）（オプション）
+
+  Mountain  Mountain  @relation(fields: [mountainId], references: [id], onDelete: Cascade)
+  Trailhead Trailhead @relation(fields: [trailheadId], references: [id])
+}
+
+model TrailheadToMtFacility {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  mtFacilityId Int
+  trailheadId  Int
+
+  timeTo       Int?
+  distanceTo   Int?
+  timeFrom     Int?
+  distanceFrom Int?
+
+  remark String? // 備考（文字列）（オプション）
+
+  MtFacility MtFacility @relation(fields: [mtFacilityId], references: [id])
+  Trailhead  Trailhead  @relation(fields: [trailheadId], references: [id])
+}
+
+model Trailhead {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  areaId    Int?
+  name      String // 登山口の名前（文字列）
+  nameKana  String // 登山口の名前（かな）
+  intro     String? // 登山口の紹介（文字列）（オプション）
+  elevation Int? //標高
+
+  lat Float?
+  lng Float?
+
+  postalCode Int?
+  prefecture String?
+  address1   String?
+  address2   String?
+  address3   String?
+
+  lastConbiniName     String? // 最寄りのコンビニ（文字列）（オプション）
+  lastConbiniNameKana String? // 最寄りのコンビニ（かな）（オプション）
+  lastConbiniLat      Float? // 最寄りのコンビニの緯度（オプション）
+  lastConbiniLng      Float? // 最寄りのコンビニの経度（オプション）
+
+  popularRating Float? // 人気度（オプション）
+  hpRating      Float? // HP（オプション）
+  myCarReg      Int? //マイカー規制(0,1)(なし、あり)
+
+  intensity      Int? // 混雑度（オプション）
+  view           Int? // 景色の評価（オプション）
+  toilet         Int? // トイレの有無（文字列）（オプション）
+  vendingMachine Int? // 自動販売機の有無（文字列）（オプション）
+  store          Int? // 売店の有無（オプション）
+  remark         String? // 備考（文字列）（オプション）
+
+  roadblockInfo  String? //通行止め情報
+  roadblockStart DateTime? //通行止め開始日時
+  roadblockEnd   DateTime? //通行止め終了日時
+
+  MountainToTrailhead MountainToTrailhead[]
+  TrailheadRating     TrailheadRating[]
+  Parking             Parking[]
+
+  Area                  Area?                   @relation(fields: [areaId], references: [id])
+  TrailheadRouteGroup   TrailheadRouteGroup[]
+  TrailheadToPhoto      TrailheadToPhoto[]
+  AfterClimbMeal        AfterClimbMeal[]
+  AfterClimbSpa         AfterClimbSpa[]
+  TrailheadToMtFacility TrailheadToMtFacility[]
+  Post                  Post[]
+}
+
+//投票の時このテーブルに入れて、平均を出してMountainFeatureに入れる
+model TrailheadRating {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  trailheadId Int
+  featureType String
+  rating      Float
+
+  trailhead Trailhead @relation(fields: [trailheadId], references: [id])
+}
+
+//投票の時このテーブルに入れて、平均を出してMountainFeatureに入れる
+model TrailheadRatingHistory {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  userId      String
+  trailheadId Int
+  featureType String
+  rating      Float
+}
+
+model RatingHistory {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  trailheadId  Int?
+  mtId         Int?
+  mtFacilityId Int?
+
+  userId   String?
+  userUuid String?
+
+  idName String?
+  rating Float
+}
+
+model Parking {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime? // 削除日時が設定される（オプション）
+
+  trailheadId Int
+  fromMethod  String //車やバスの停車場所
+  name        String
+  nameKana    String
+  postalCode  Int?
+  prefecture  String?
+  address1    String?
+  address2    String?
+  address3    String?
+
+  mapLink String? //地図のリンク
+
+  methodToTh          MethodToThType? //登山口までの方法 (例: 徒歩, バス, 車)
+  timeToTrailhead     Int? //登山口までの所要時間 (例: "3分")
+  distanceToTrailhead Int? //登山口までの距離 (例: "400m")
+  feeToTrailhead      Int? //登山口までの料金 (例: "500円")
+
+  capacity Int? //収容台数 (例: "50台")
+  dirtRoad Boolean? //ダート道の有無 (例: True = 有, False = 無)
+  feeFree  Boolean? //駐車場の料金bool(無料かどうか)
+  feeStr   String? //料金 (例: "1200円/回")
+  notes    String? //駐車場に関する追加情報や注意点
+
+  lat       Float?
+  lng       Float?
+  Trailhead Trailhead @relation(fields: [trailheadId], references: [id])
+}
+
+enum MethodToThType {
+  walk
+  publicTransport
+}
+
+model TrailheadRouteGroup {
+  id          Int                     @id @default(autoincrement())
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+  deletedAt   DateTime? // 削除日時が設定される（オプション）
+  type        TrailheadRouteGroupType
+  trailheadId Int
+  remark      String?
+  Trailhead   Trailhead               @relation(fields: [trailheadId], references: [id])
+  routes      TrailheadRoute[] // このグループに関連するルートのリスト
+}
+
+model TrailheadRoute {
+  id                  Int                 @id @default(autoincrement())
+  name                String
+  type                SegmentType // start, end など
+  time                Int?
+  methodType          MethodType? // バス、電車、タクシー、徒歩
+  methodName          String? // 例: JR特急あずさ、アルピコ交通バス などの具体的な名前や番号
+  payment             Int?
+  order               Int // セグメントの順序情報
+  routeGroupId        Int
+  url                 String? // ルートのURL
+  TrailheadRouteGroup TrailheadRouteGroup @relation(fields: [routeGroupId], references: [id])
+}
+
+enum SegmentType {
+  start
+  middle
+  end
+}
+
+enum MethodType {
+  bus
+  train
+  taxi
+  walk
+}
+
+enum TrailheadRouteGroupType {
+  myCar
+  publicTransport
+}
+
+//MtFacility(施設)と山のリレーション多対多、別の山域と被るので
+model MountainToMtFacility {
+  mountainId   Int
+  mtFacilityId Int
+
+  timeTo       Int?
+  distanceTo   Int?
+  timeFrom     Int?
+  distanceFrom Int?
+
+  remark String? // 備考（文字列）（オプション）
+
+  Mountain   Mountain   @relation(fields: [mountainId], references: [id], onDelete: Cascade)
+  MtFacility MtFacility @relation(fields: [mtFacilityId], references: [id])
+
+  @@id([mountainId, mtFacilityId])
+  @@index([mtFacilityId])
+  @@index([mountainId])
+}
+
+model MtFacilityType {
+  id                         Int                          @id @default(autoincrement())
+  createdAt                  DateTime                     @default(now())
+  updatedAt                  DateTime                     @updatedAt
+  deletedAt                  DateTime?
+  name                       String
+  nameKana                   String?
+  remark                     String?
+  MtFacility                 MtFacility[]
+  MtFacilityToMtFacilityType MtFacilityToMtFacilityType[]
+}
+
+model MtFacilityToMtFacilityType {
+  id               Int            @id @default(autoincrement())
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  deletedAt        DateTime?
+  mtFacilityId     Int
+  mtFacilityTypeId Int
+  MtFacility       MtFacility     @relation(fields: [mtFacilityId], references: [id])
+  MtFacilityType   MtFacilityType @relation(fields: [mtFacilityTypeId], references: [id])
+}
+
+//キャンプ場などの施設
+model MtFacility {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  name     String
+  nameKana String?
+
+  lat Float?
+  lng Float?
+
+  postalCode Int?
+  prefecture String?
+  address1   String?
+  address2   String?
+  address3   String?
+
+  areaId         Int?
+  MtFacilityType MtFacilityType[]
+  docomo         Int? //電波の強さ5段階
+  au             Int?
+  softbank       Int?
+  rakuten        Int?
+
+  remark String? //備考
+
+  //***施設の情報***//
+  //内トイレ
+  inTFlag                  Int? //0で何もない1でまる,2で三角
+  inTCleanRating           Float? //清潔度
+  inTRemark                String? //備考
+  //外トイレ
+  outTFlag                 Int? //0で何もない1でまる,2で三角
+  outTCleanRating          Float? //清潔度
+  outTRemark               String? //備考
+  //洗面台
+  bathSinkFlag             Int? //0で何もない1でまる,2で三角
+  bathSinkCleanRating      Float? //清潔度
+  bathSinkRemark           String? //備考
+  //談話室
+  talkRoomFlag             Int? //0で何もない1でまる,2で三角
+  talkRoomCleanRating      Float? //清潔度
+  talkRoomRemark           String? //備考
+  //乾燥室
+  dryRoomFlag              Int? //0で何もない1でまる,2で三角
+  dryRoomCleanRating       Float? //清潔度
+  dryRoomRemark            String? //備考
+  //カフェすぺーす
+  cafeSpaceRoomFlag        Int? //0で何もない1でまる,2で三角
+  cafeSpaceRoomCleanRating Float? //清潔度
+  cafeSpaceRoomRemark      String? //備考
+  //風呂
+  bashRoomFlag             Int? //0で何もない1でまる,2で三角
+  bashRoomCleanRating      Float? //清潔度
+  bashRoomRemark           String? //備考
+  //テラス入れたいね
+
+  //listのところ
+  listTimeRemark       String? //営業時間の備考(売店とか)
+  listCapacityTent     Int? //収容人数
+  listCapacityHut      Int? //収容人数
+  listFeeTent          Int? //料金　テント1泊2日
+  listFeeHut           Int? //料金　山小屋1泊2日
+  listFeeHut2          Int? //料金　山小屋素泊まり
+  listTelOffice        String? //電話番号　事務所
+  listTelLocal         String? //電話番号　現地
+  listHp               String? //hp'
+  listElevation        Int? //標高
+  listConnectionRemark String? //電波補足
+
+  //表のところ
+  tStay         Int? //宿泊施設の有無 (null-)(0❌)(1⭕️)(2△)
+  tCafeSpace    Int? //カフェスペースの有無 (null-)(0❌)(1⭕️)(2△)
+  tTent         Int? //テント場の有無 (null-)(0❌)(1⭕️)(2△)
+  tShop         Int? //売店の有無 (null-)(0❌)(1⭕️)(2△)
+  tToilet       Int? //トイレの有無 (null-)(0❌)(1⭕️)(2△)
+  tBathSink     Int? //洗面台の有無 (null-)(0❌)(1⭕️)(2△)
+  tChangingRoom Int? //更衣室の有無 (null-)(0❌)(1⭕️)(2△)
+  tDryRoom      Int? //乾燥室の有無 (null-)(0❌)(1⭕️)(2△)
+  tBath         Int? //お風呂の有無 (null-)(0❌)(1⭕️)(2△)
+  tWave         Int? //電波の有無 (null-)(0❌)(1⭕️)(2△)
+  tWifi         Int? //Wifiの有無 (null-)(0❌)(1⭕️)(2△)
+  tPublicPhone  Int? //公衆電話の有無 (null-)(0❌)(1⭕️)(2△)
+  tKitchen      Int? //自炊場の有無 (null-)(0❌)(1⭕️)(2△)
+  tTalkRoom     Int? //談話室の有無 (null-)(0❌)(1⭕️)(2△)
+  tOther        Int? //その他の有無 (null-)(0❌)(1⭕️)(2△)
+
+  MountainToMtFacility MountainToMtFacility[]
+
+  Post                       Post[]
+  Area                       Area?                        @relation(fields: [areaId], references: [id])
+  MtFacilityToPhoto          MtFacilityToPhoto[]
+  MtFacilityToMtFacilityType MtFacilityToMtFacilityType[]
+  MtFacilityToRsvMethod      MtFacilityToRsvMethod[]
+  MtFacilityToPayMethod      MtFacilityToPayMethod[]
+  BusinessPeriod             BusinessPeriod[]
+  TrailheadToMtFacility      TrailheadToMtFacility[]
+}
+
+//予約方法 (複数可) 電話 WEB 予約不要
+model RsvMethod {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  name                  String
+  MtFacilityToRsvMethod MtFacilityToRsvMethod[]
+}
+
+model MtFacilityToRsvMethod {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  mtFacilityId Int
+  rsvMethodId  Int
+  MtFacility   MtFacility @relation(fields: [mtFacilityId], references: [id])
+  RsvMethod    RsvMethod  @relation(fields: [rsvMethodId], references: [id])
+}
+
+//決済情報(決済方法 (複数可) 現金 クレジット 電子マネー)
+model PayMethod {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  name                  String
+  MtFacilityToPayMethod MtFacilityToPayMethod[]
+}
+
+model MtFacilityToPayMethod {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  mtFacilityId Int
+  payMethodId  Int
+  MtFacility   MtFacility @relation(fields: [mtFacilityId], references: [id])
+  PayMethod    PayMethod  @relation(fields: [payMethodId], references: [id])
+}
+
+//営業期間
+model BusinessPeriod {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  mtFacilityId Int
+  year         String?
+  start        DateTime?
+  end          DateTime?
+  MtFacility   MtFacility @relation(fields: [mtFacilityId], references: [id])
+}
+
+model Post {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  parentId      Int?
+  userId        String
+  mtId          Int?
+  mtFacilityId  Int?
+  mtTrailheadId Int?
+  content       String
+  activityDate  DateTime //createdatあるからこれが登った日みたいにしていいかな
+
+  User          User            @relation(fields: [userId], references: [id])
+  Photo         Photo[]
+  Parent        Post?           @relation("PostToPost", fields: [parentId], references: [id])
+  Replies       Post[]          @relation("PostToPost")
+  PostToHashtag PostToHashtag[]
+  Mention       Mention[]
+  PostLike      PostLike[]
+  Mountain      Mountain?       @relation(fields: [mtId], references: [id], onDelete: Cascade)
+  MtFacility    MtFacility?     @relation(fields: [mtFacilityId], references: [id])
+  MtTrailhead   Trailhead?      @relation(fields: [mtTrailheadId], references: [id])
+
+  PostBookmark PostBookmark[]
+  Notice       Notice[]
+}
+
+model PostBookmark {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  postId Int
+  userId String
+
+  Post Post @relation(fields: [postId], references: [id])
+  User User @relation(fields: [userId], references: [id])
+}
+
+model User {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  name String?
+
+  userProfileText            String?
+  email                      String?   @unique
+  unverifiedEmail            String?   @unique
+  emailVerified              DateTime?
+  emailVerificationEmailSent DateTime?
+  image                      String?
+
+  password               String?
+  userName               String                   @unique @default(nanoid(8))
+  iconOriginal           String?
+  iconThumbnail          String?
+  accounts               Account[]
+  sessions               Session[]
+  Post                   Post[]
+  mentions               Mention[]                @relation("mentioned")
+  PostLike               PostLike[]
+  PostBookmark           PostBookmark[]
+  Following              UserFollow[]             @relation("UserFollowing")
+  Followers              UserFollow[]             @relation("UserFollowers")
+  NoticeFromUser         Notice[]                 @relation("FromUser")
+  NoticeToUser           Notice[]                 @relation("ToUser")
+  UserInfo               UserInfo?
+  EmailVerificationToken EmailVerificationToken[]
+}
+
+model EmailVerificationToken {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  token     String    @unique
+  userId    String
+  expires   DateTime
+  User      User      @relation(fields: [userId], references: [id])
+
+  @@index([userId], name: "idx_email_verification_token_user_id")
+}
+
+model UserInfo {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  userId String @unique
+
+  startPointLat     Float?
+  startPointLng     Float?
+  startPointLabel   String?
+  dayMoveMaxTime    Int?
+  stayStartTime     String?
+  startDayOfWeek    Int?
+  coordinatesRadius Int?
+  User              User    @relation(fields: [userId], references: [id])
+}
+
+model UserFollow {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  followingId String
+  followerId  String
+
+  Following User @relation("UserFollowing", fields: [followingId], references: [id])
+  Follower  User @relation("UserFollowers", fields: [followerId], references: [id])
+}
+
+model Mention {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  postId          Int
+  mentionedUserId String
+
+  Post Post @relation(fields: [postId], references: [id])
+  User User @relation("mentioned", fields: [mentionedUserId], references: [id])
+}
+
+model Hashtag {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  tag           String          @unique
+  PostToHashtag PostToHashtag[]
+}
+
+model PostToHashtag {
+  postId    Int
+  hashtagId Int
+  Post      Post    @relation(fields: [postId], references: [id])
+  Hashtag   Hashtag @relation(fields: [hashtagId], references: [id])
+
+  @@id([postId, hashtagId])
+}
+
+model PostLike {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  postId Int
+  userId String
+
+  Post Post @relation(fields: [postId], references: [id])
+  User User @relation(fields: [userId], references: [id])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? // @db.Text
+  access_token      String? // @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? // @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+generator omitExtraFields {
+  provider = "prisma-generator-omit-extra-fields"
+
+  // optional parameter to change directory or name of generated file
+  // if output is specified, it should contain filename of generated file
+  // (output like "../generated" is invalid)
+  output = "../generated/extra-fields.ts"
+}
+
+//展望　山頂
+
+generator zod {
+  provider               = "zod-prisma-types"
+  output                 = "../generated/schema/zod"
+  addInputTypeValidation = false
+  addIncludeTypes        = false
+  addSelectTypes         = false
+  useTypeAssertions      = true //3.21.1問題
+
+  useMultipleFiles = true //これファイル分割
+  writeBarrelFiles = false //バレるファイルを作らない
+}

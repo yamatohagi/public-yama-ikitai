@@ -1,0 +1,121 @@
+name: CI - Main
+
+on:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Node.js verson
+
+      - name: Create env file
+        run: |
+          touch .env
+          echo NEXT_PUBLIC_VERCEL_ENV="production" >> .env
+          echo POSTGRES_PRISMA_URL=${{ secrets.POSTGRES_PRISMA_URL }} >> .env
+          echo NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }} >> .env
+          echo NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }} >> .env
+          echo HOST=${{ secrets.HOST }} >> .env
+          echo GOOGLE_MAP_API_KEY=${{ secrets.GOOGLE_MAP_API_KEY }} >> .env
+          echo PORT=${{ secrets.PORT }} >> .env
+          echo NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }} >> .env
+          echo NEXTAUTH_URL=${{ secrets.NEXTAUTH_URL }} >> .env
+          echo GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} >> .env
+          echo GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }} >> .env
+          echo LINE_CLIENT_ID=${{ secrets.LINE_CLIENT_ID }} >> .env
+          echo LINE_CLIENT_SECRET=${{ secrets.LINE_CLIENT_SECRET }} >> .env
+          echo TWITTER_CONSUMER_KEY=${{ secrets.TWITTER_CONSUMER_KEY }} >> .env
+          echo TWITTER_CONSUMER_SECRET=${{ secrets.TWITTER_CONSUMER_SECRET }} >> .env
+          echo SMTP_USER=${{ secrets.SMTP_USER }} >> .env
+          echo SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }} >> .env
+          echo SMTP_HOST=${{ secrets.SMTP_HOST }} >> .env
+          echo SMTP_PORT=${{ secrets.SMTP_PORT }} >> .env
+          echo EMAIL_FROM=${{ secrets.EMAIL_FROM }} >> .env
+          echo NEXT_PUBLIC_CLOUDFLARE_ACCESS_KEY_ID=${{ secrets.NEXT_PUBLIC_CLOUDFLARE_ACCESS_KEY_ID }} >> .env
+          echo NEXT_PUBLIC_CLOUDFLARE_ACCESS_KEY=${{ secrets.NEXT_PUBLIC_CLOUDFLARE_ACCESS_KEY }} >> .env
+          echo NEXT_PUBLIC_CLOUDFLARE_ENDPOINT=${{ secrets.NEXT_PUBLIC_CLOUDFLARE_ENDPOINT }} >> .env
+          echo NEXT_PUBLIC_IMAGE_HOST_URL=${{ secrets.NEXT_PUBLIC_IMAGE_HOST_URL }} >> .env
+          echo NEXT_PUBLIC_R2_BUCKET_NAME=${{ secrets.NEXT_PUBLIC_R2_BUCKET_NAME }} >> .env
+
+          echo NEXT_PUBLIC_S3_ACCESS_KEY=${{ secrets.NEXT_PUBLIC_S3_ACCESS_KEY }} >> .env
+          echo NEXT_PUBLIC_S3_ACCESS_KEY_ID=${{ secrets.NEXT_PUBLIC_S3_ACCESS_KEY_ID }} >> .env
+          echo NEXT_PUBLIC_S3_BUCKET_NAME=${{ secrets.NEXT_PUBLIC_S3_BUCKET_NAME }} >> .env
+          echo NEXT_PUBLIC_S3_ENDPOINT=${{ secrets.NEXT_PUBLIC_S3_ENDPOINT }} >> .env
+
+      - name: Cache node modules
+        uses: actions/cache@v3
+        id: npm-cache
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/.node-version') }}-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Cache next cache
+        uses: actions/cache@v3
+        id: next-cache
+        with:
+          path: ${{ github.workspace }}/.next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
+
+      - name: Install dependencies
+        uses: actions/cache@v3
+        id: node_modules_cache_id
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: '**/node_modules'
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+      - run: echo '${{ toJSON(steps.node_modules_cache_id.outputs) }}'
+      - if: ${{ steps.node_modules_cache_id.outputs.cache-hit != 'true' }}
+        run: npm ci
+      # - run: npm ls --depth=0
+      - run: npm ci
+
+      - name: Build project
+        run: NODE_OPTIONS="--max-old-space-size=4096" npm run build
+
+      - name: Cache production artifacts
+        uses: actions/cache@v3
+        with:
+          path: .
+          key: ${{ runner.os }}-next-${{ github.sha }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-next-${{ github.sha }}-
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download cache
+        uses: actions/cache@v3
+        with:
+          path: .
+          key: ${{ runner.os }}-next-${{ github.sha }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-next-${{ github.sha }}-
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy.key
+          chmod 600 ~/.ssh/deploy.key
+          ssh-keyscan ${{ secrets.REMOTE_HOST }} >> ~/.ssh/known_hosts
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Rsync files
+        run: rsync -avzr -e 'ssh -i ~/.ssh/deploy.key' --exclude './next/cache' --delete ./ ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}:${{ secrets.REMOTE_APP_DIR }}/
+
+      - name: Restart App
+        run: |
+          ssh -i ~/.ssh/deploy.key ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }} "pm2 restart climb-bond && pm2 save"
